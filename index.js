@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const cors = require('cors');
@@ -49,11 +49,32 @@ async function run() {
 
         })
 
+
+
         // carts data post 
+
+        app.get('/carts', async (req, res) => {
+
+            const email = req.query.email;
+
+            const query = { email: email };
+            console.log(email);
+            const result = await cartsCollection.find(query).toArray();
+            res.send(result);
+        })
+
+
         app.post('/carts', async (req, res) => {
             const cart = req.body;
             const result = await cartsCollection.insertOne(cart);
             res.json(result);
+        })
+
+        app.delete('/carts/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await cartsCollection.deleteOne(query);
+            res.send(result);
         })
 
 
