@@ -1,6 +1,7 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
+var jwt = require('jsonwebtoken');
 const app = express();
 const cors = require('cors');
 app.port = process.env.PORT || 5000;
@@ -36,6 +37,16 @@ async function run() {
         const userCollection = client.db("bistroDB").collection("users");
         const reviewsCollection = client.db("bistroDB").collection("reviews");
         const cartsCollection = client.db("bistroDB").collection("carts");
+
+        //create web token api
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            res.send({ token: token });
+        })
+
+
+
 
         //user related api
         app.get('/users', async (req, res) => {
