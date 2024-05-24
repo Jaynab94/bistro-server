@@ -50,7 +50,10 @@ async function run() {
             res.send(result);
         })
 
-        //admin related api
+
+
+
+        //admin related api[change user role to admin]
 
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
