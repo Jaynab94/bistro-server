@@ -62,6 +62,7 @@ async function run() {
         const userCollection = client.db("bistroDB").collection("users");
         const reviewsCollection = client.db("bistroDB").collection("reviews");
         const cartsCollection = client.db("bistroDB").collection("carts");
+        const paymentsCollection = client.db("bistroDB").collection("payments");
 
         //create web token api
         app.post('/jwt', async (req, res) => {
@@ -141,15 +142,15 @@ async function run() {
         //users related api get all users
         app.get('/users', verifyToken, verifyAdmin, async (req, res) => {
 
-            const result = await userCollection.find().toArray();
+            const paymentResult = await userCollection.find().toArray();
             res.send(result);
         });
 
         app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
-            const result = await userCollection.deleteOne(query)
-            res.send(result);
+            const deletedResult = await userCollection.deleteOne(query)
+            res.send({ paymentResult, deletedResult });
         });
 
 
@@ -301,6 +302,31 @@ async function run() {
 
 
         });
+
+        //payment related api
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const result = await paymentsCollection.insertOne(payment);
+            console.log(payment, 'info pyment');
+            const query = {
+                _id: {
+                    $in: payment.cartIds.map(id => new ObjectId(id))
+                }
+
+            }
+
+            const deletedResult = await cartsCollection.deleteMany(query);
+            res.send({ result });
+        });
+
+        app.get('/payments/:email', verifyToken, async (req, res) => {
+            const query = { email: req.params.email };
+            if (req.params.email !== req.decoded.email) {
+                return res.status(403).send({ message: 'Unauthorized access' });
+            }
+            const result = await paymentsCollection.find(query).toArray();
+            res.send(result);
+        })
 
 
 
