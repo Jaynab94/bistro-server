@@ -54,7 +54,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
 
-        await client.connect();
+        // await client.connect();
 
 
 
@@ -282,7 +282,7 @@ async function run() {
 
             // const amount = 100;
             // const amount = parseInt(price * 100);
-            const amount = price * 100;
+            const amount = parseInt(price * 100);
             console.log(amount);
 
 
@@ -321,10 +321,107 @@ async function run() {
 
         app.get('/payments/:email', verifyToken, async (req, res) => {
             const query = { email: req.params.email };
+            console.log(query);
             if (req.params.email !== req.decoded.email) {
+
                 return res.status(403).send({ message: 'Unauthorized access' });
             }
             const result = await paymentsCollection.find(query).toArray();
+            console.log(result);
+            res.send(result);
+        });
+
+
+        app.get('/payments', async (req, res) => {
+            const result = await paymentsCollection.find().toArray();
+            console.log(result);
+            res.send(result);
+        })
+
+
+        // analytics related api
+        app.get('/admin-stats', verifyToken, verifyAdmin, async (req, res) => {
+            const users = await userCollection.estimatedDocumentCount();
+            const menuItems = await menuCollection.estimatedDocumentCount();
+            const orders = await paymentsCollection.estimatedDocumentCount();
+
+            const result = await paymentsCollection.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: {
+                            $sum: '$price'
+
+                        }
+
+                    }
+                },
+            ]).toArray();
+            const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+            res.send(
+                {
+                    users,
+                    menuItems,
+                    orders,
+                    revenue
+
+
+                }
+            );
+
+        })
+
+
+        //for bar chart and pie chart
+
+        app.get('/order-stats', verifyToken, verifyAdmin, async (req, res) => {
+            const result = await paymentsCollection.aggregate([
+
+                {
+                    $unwind: "$menuIds",
+                },
+                {
+                    $addFields: {
+                        menuId: { $toObjectId: "$menuIds" },
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "menu",
+                        localField: "menuId",
+                        foreignField: "_id",
+                        as: "menuItems",
+                    },
+                },
+                {
+                    $unwind: '$menuItems',
+                },
+                {
+                    $group: {
+                        _id: '$menuItems.category',
+                        quantity: {
+                            $sum: 1,
+
+                        },
+                        revenue: {
+                            $sum: '$menuItems.price'
+                        }
+
+
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        category: '$_id',
+                        quantity: '$quantity',
+                        revenue: '$revenue',
+
+                    }
+                }
+
+            ]).toArray();
+
             res.send(result);
         })
 
@@ -333,8 +430,8 @@ async function run() {
 
 
 
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
